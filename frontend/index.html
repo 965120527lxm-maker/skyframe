@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SkyFrame v2 — AI Drone Video Enhancement</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Instrument+Sans:wght@400;500;600;700&display=swap"
+    rel="stylesheet" />
+  <style>
+    :root {
+      --gold: #f0c040;
+      --orange: #e07020;
+      --bg: #0a0a0a;
+      --surface: rgba(255, 255, 255, 0.03);
+      --border: rgba(255, 255, 255, 0.08);
+      --text: rgba(255, 255, 255, 0.85);
+      --text-dim: rgba(255, 255, 255, 0.4);
+      --text-faint: rgba(255, 255, 255, 0.15);
+      --green: #34d399;
+      --red: #f87171;
+      --blue: #60a5fa;
+      --purple: #a78bfa;
+      --font-mono: 'JetBrains Mono', monospace;
+      --font-sans: 'Instrument Sans', sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(240, 192, 64, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(240, 192, 64, 0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      animation: gridMove 8s linear infinite;
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      top: -20%;
+      right: -10%;
+      z-index: 0;
+      pointer-events: none;
+      width: 600px;
+      height: 600px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(240, 192, 64, 0.06) 0%, transparent 70%);
+    }
+
+    @keyframes gridMove {
+      to {
+        transform: translate(40px, 40px);
+      }
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.4;
+      }
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 580px;
+      margin: 0 auto;
+      padding: 60px 24px 80px;
+    }
+
+    /* Header */
+    .header {
+      margin-bottom: 48px;
+      animation: fadeUp 0.6s ease;
+    }
+
+    .header-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .logo {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--gold), var(--orange));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      color: var(--bg);
+    }
+
+    .header h1 {
+      font-family: var(--font-mono);
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .version {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: rgba(240, 192, 64, 0.1);
+      color: var(--gold);
+      font-weight: 600;
+    }
+
+    .header p {
+      font-size: 14px;
+      color: var(--text-dim);
+      line-height: 1.6;
+    }
+
+    /* API Status */
+    .api-bar {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    .api-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+
+    .api-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--red);
+      transition: background 0.3s;
+    }
+
+    .api-dot.on {
+      background: var(--green);
+    }
+
+    /* Dropzone */
+    .dropzone {
+      border: 2px dashed var(--border);
+      border-radius: 16px;
+      padding: 60px 40px;
+      text-align: center;
+      cursor: pointer;
+      background: rgba(255, 255, 255, 0.02);
+      transition: all 0.3s;
+      animation: fadeUp 0.6s ease 0.1s both;
+    }
+
+    .dropzone:hover,
+    .dropzone.dragover {
+      border-color: var(--gold);
+      background: rgba(240, 192, 64, 0.04);
+    }
+
+    .dropzone.disabled {
+      opacity: 0.5;
+      pointer-events: none;
+    }
+
+    .dropzone p {
+      font-size: 16px;
+      color: var(--text-dim);
+      line-height: 1.6;
+    }
+
+    .dropzone .sub {
+      font-size: 13px;
+      opacity: 0.5;
+    }
+
+    .browse-btn {
+      margin-top: 20px;
+      padding: 10px 28px;
+      border-radius: 8px;
+      border: 1px solid rgba(240, 192, 64, 0.3);
+      background: rgba(240, 192, 64, 0.08);
+      color: var(--gold);
+      font-family: var(--font-sans);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    /* Progress */
+    .progress-section {
+      border: 1px solid rgba(240, 192, 64, 0.15);
+      border-radius: 16px;
+      padding: 40px 24px;
+      text-align: center;
+      background: rgba(240, 192, 64, 0.02);
+      animation: fadeUp 0.3s ease;
+    }
+
+    .progress-ring-wrap {
+      position: relative;
+      width: 120px;
+      height: 120px;
+      margin: 0 auto 16px;
+    }
+
+    .progress-ring-wrap svg {
+      transform: rotate(-90deg);
+    }
+
+    .progress-text {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--gold);
+    }
+
+    .progress-filename {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--text-dim);
+    }
+
+    .progress-filename span {
+      color: var(--text);
+    }
+
+    .progress-sub {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-faint);
+      margin-top: 6px;
+    }
+
+    /* File Cards */
+    .files-section {
+      margin-top: 32px;
+    }
+
+    .files-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .files-header h2 {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .files-header .count {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-faint);
+    }
+
+    .file-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+      margin-bottom: 12px;
+      animation: fadeUp 0.4s ease;
+    }
+
+    .file-card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 16px;
+    }
+
+    .file-card-top h3 {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.9);
+      margin-bottom: 8px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 360px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .badge.uploaded {
+      background: #0a2a1a;
+      border: 1px solid var(--green);
+      color: var(--green);
+    }
+
+    .badge.uploading {
+      background: #1a1a2e;
+      border: 1px solid var(--gold);
+      color: var(--gold);
+    }
+
+    .badge.failed {
+      background: #2a0a0a;
+      border: 1px solid var(--red);
+      color: var(--red);
+    }
+
+    .badge-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .meta-label {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 4px;
+    }
+
+    .meta-value {
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.8);
+      font-weight: 500;
+    }
+
+    /* Buttons */
+    .btn {
+      padding: 12px 20px;
+      border-radius: 10px;
+      border: none;
+      font-family: var(--font-sans);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.15s;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--gold), var(--orange));
+      color: var(--bg);
+      font-weight: 700;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 20px rgba(240, 192, 64, 0.3);
+    }
+
+    .btn-enhance {
+      background: linear-gradient(135deg, var(--purple), #7c3aed);
+      color: #fff;
+      font-weight: 700;
+    }
+
+    .btn-enhance:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 20px rgba(167, 139, 250, 0.3);
+    }
+
+    .btn-ghost {
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-dim);
+      font-size: 13px;
+    }
+
+    .btn-ghost:hover {
+      border-color: rgba(248, 113, 113, 0.3);
+      color: var(--red);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none !important;
+      box-shadow: none !important;
+    }
+
+    .file-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    /* Job card inside file card */
+    .job-card {
+      margin-top: 16px;
+      padding: 16px;
+      border-radius: 10px;
+      border: 1px solid rgba(167, 139, 250, 0.15);
+      background: rgba(167, 139, 250, 0.04);
+    }
+
+    .job-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .job-header h4 {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--purple);
+    }
+
+    .job-badge {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .job-badge.pending {
+      background: rgba(240, 192, 64, 0.1);
+      color: var(--gold);
+    }
+
+    .job-badge.processing {
+      background: rgba(96, 165, 250, 0.1);
+      color: var(--blue);
+    }
+
+    .job-badge.completed {
+      background: rgba(52, 211, 153, 0.1);
+      color: var(--green);
+    }
+
+    .job-badge.failed {
+      background: rgba(248, 113, 113, 0.1);
+      color: var(--red);
+    }
+
+    /* Progress bar */
+    .progress-bar-wrap {
+      height: 4px;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--purple), var(--blue));
+      border-radius: 2px;
+      transition: width 0.5s ease;
+    }
+
+    .job-error {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--red);
+      margin-top: 8px;
+      word-break: break-all;
+    }
+
+    /* Spinner */
+    .spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      border-top-color: currentColor;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      display: inline-block;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      padding: 14px 20px;
+      border-radius: 10px;
+      font-family: var(--font-sans);
+      font-size: 13px;
+      font-weight: 500;
+      z-index: 1000;
+      max-width: 360px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      animation: fadeUp 0.3s ease;
+    }
+
+    .toast.success {
+      background: #0a2a1a;
+      border: 1px solid var(--green);
+      color: var(--green);
+    }
+
+    .toast.error {
+      background: #2a0a0a;
+      border: 1px solid var(--red);
+      color: var(--red);
+    }
+
+    .toast.info {
+      background: #0a1a2a;
+      border: 1px solid var(--blue);
+      color: var(--blue);
+    }
+
+    footer {
+      margin-top: 60px;
+      padding-top: 24px;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      text-align: center;
+    }
+
+    footer p {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-faint);
+      letter-spacing: 0.05em;
+    }
+
+    #fileInput {
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+
+    <header class="header">
+      <div class="header-row">
+        <div class="logo">◈</div>
+        <h1>SkyFrame</h1>
+        <span class="version">v0.2</span>
+      </div>
+      <p>Upload drone footage → AI enhance → download the result.</p>
+    </header>
+
+    <div class="api-bar">
+      <div class="api-status">
+        <span class="api-dot" id="apiDot"></span>
+        <span id="apiLabel">Checking…</span>
+      </div>
+      <div class="api-status">
+        <span class="api-dot" id="aiDot"></span>
+        <span id="aiLabel">AI…</span>
+      </div>
+    </div>
+
+    <div id="uploadArea">
+      <div class="dropzone" id="dropzone">
+        <svg width="56" height="56" viewBox="0 0 56 56" fill="none" style="margin-bottom:20px;opacity:0.6">
+          <path d="M28 20v16M20 28h16" stroke="#f0c040" stroke-width="2" stroke-linecap="round" />
+          <circle cx="28" cy="28" r="8" stroke="#f0c040" stroke-width="1.5" fill="none" />
+          <circle cx="14" cy="14" r="6" stroke="rgba(255,255,255,0.2)" stroke-width="1" fill="none" />
+          <circle cx="42" cy="14" r="6" stroke="rgba(255,255,255,0.2)" stroke-width="1" fill="none" />
+          <circle cx="14" cy="42" r="6" stroke="rgba(255,255,255,0.2)" stroke-width="1" fill="none" />
+          <circle cx="42" cy="42" r="6" stroke="rgba(255,255,255,0.2)" stroke-width="1" fill="none" />
+        </svg>
+        <p>Drop your drone footage here<br><span class="sub">MP4 or MOV · up to 500MB</span></p>
+        <button class="browse-btn" onclick="document.getElementById('fileInput').click()">Browse Files</button>
+      </div>
+    </div>
+    <input type="file" id="fileInput" accept=".mp4,.mov" />
+
+    <div class="progress-section" id="progressSection" style="display:none">
+      <div class="progress-ring-wrap">
+        <svg width="120" height="120">
+          <circle cx="60" cy="60" r="56" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="4" />
+          <circle id="progressCircle" cx="60" cy="60" r="56" fill="none" stroke="url(#pGrad)" stroke-width="4"
+            stroke-linecap="round" stroke-dasharray="351.86" stroke-dashoffset="351.86"
+            style="transition:stroke-dashoffset 0.3s" />
+          <defs>
+            <linearGradient id="pGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#f0c040" />
+              <stop offset="100%" stop-color="#e07020" />
+            </linearGradient>
+          </defs>
+        </svg>
+        <div class="progress-text" id="progressText">0%</div>
+      </div>
+      <div class="progress-filename">Uploading <span id="progressFilename"></span></div>
+      <div class="progress-sub" id="progressSub"></div>
+    </div>
+
+    <div class="files-section" id="filesSection" style="display:none">
+      <div class="files-header">
+        <h2>Your Files</h2>
+        <span class="count" id="fileCount"></span>
+      </div>
+      <div id="fileList"></div>
+    </div>
+
+    <footer>
+      <p>SkyFrame · Upload → AI Enhance → Download</p>
+    </footer>
+  </div>
+  <div id="toastContainer"></div>
+
+  <script>
+    // const API = 'http://localhost:8000';
+    const API = '';
+    const MAX_SIZE = 500 * 1024 * 1024;
+    const ALLOWED_EXT = ['.mp4', '.mov'];
+
+    let uploads = []; // each: { ...uploadDetail, jobs: [...] }
+    let backendOk = false, aiEnabled = false;
+    let pollingJobs = new Set(); // job IDs being polled
+
+    // ── Helpers ──────────────────────────────────
+    function fmt(b) { if (!b) return '0 B'; const k = 1024, s = ['B', 'KB', 'MB', 'GB'], i = Math.floor(Math.log(b) / Math.log(k)); return parseFloat((b / Math.pow(k, i)).toFixed(1)) + ' ' + s[i]; }
+    function esc(s) { return s.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+
+    function showToast(msg, type = 'info') {
+      const el = document.createElement('div');
+      el.className = `toast ${type}`; el.textContent = msg;
+      document.getElementById('toastContainer').appendChild(el);
+      setTimeout(() => el.remove(), 4000);
+    }
+
+    function setProgress(pct) {
+      const c = 2 * Math.PI * 56;
+      document.getElementById('progressCircle').style.strokeDashoffset = c - (pct / 100) * c;
+      document.getElementById('progressText').textContent = Math.round(pct) + '%';
+    }
+
+    // ── Backend check ────────────────────────────
+    async function checkBackend() {
+      try {
+        const r = await fetch(`${API}/health`);
+        const d = await r.json();
+        backendOk = true;
+        aiEnabled = d.aiEnabled || false;
+        document.getElementById('apiDot').classList.add('on');
+        document.getElementById('apiLabel').textContent = 'Backend connected';
+        document.getElementById('aiDot').classList.toggle('on', aiEnabled);
+        document.getElementById('aiLabel').textContent = aiEnabled ? 'AI ready' : 'AI off (no token)';
+      } catch {
+        document.getElementById('apiLabel').textContent = 'Backend offline';
+        document.getElementById('aiLabel').textContent = 'AI unavailable';
+      }
+    }
+
+    // ── Load existing uploads + their jobs ───────
+    async function loadUploads() {
+      if (!backendOk) return;
+      try {
+        const r = await fetch(`${API}/api/uploads`);
+        const d = await r.json();
+        uploads = d.uploads || [];
+        // Load jobs for each upload
+        for (const u of uploads) {
+          u.jobs = await loadJobsForUpload(u.id);
+        }
+        renderFiles();
+        // Resume polling for active jobs
+        for (const u of uploads) {
+          for (const j of (u.jobs || [])) {
+            if (j.status === 'pending' || j.status === 'processing') {
+              startPollingJob(u.id, j.id);
+            }
+          }
+        }
+      } catch { }
+    }
+
+    async function loadJobsForUpload(uploadId) {
+      try {
+        const r = await fetch(`${API}/api/uploads/${uploadId}/jobs`);
+        const d = await r.json();
+        return d.jobs || [];
+      } catch { return []; }
+    }
+
+    // ── Upload ───────────────────────────────────
+    function validateFile(f) {
+      const ext = '.' + f.name.split('.').pop().toLowerCase();
+      if (!ALLOWED_EXT.includes(ext)) return 'Unsupported format.';
+      if (f.size > MAX_SIZE) return 'File too large (max 500MB).';
+      return null;
+    }
+
+    async function handleUpload(file) {
+      const err = validateFile(file);
+      if (err) { showToast(err, 'error'); return; }
+      if (!backendOk) { showToast('Backend offline.', 'error'); return; }
+
+      document.getElementById('dropzone').style.display = 'none';
+      document.getElementById('progressSection').style.display = '';
+      document.getElementById('progressFilename').textContent = file.name;
+      document.getElementById('progressSub').textContent = fmt(file.size);
+      setProgress(0);
+
+      try {
+        const initRes = await fetch(`${API}/api/uploads/init`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename: file.name, mimeType: file.type || 'video/mp4', fileSize: file.size }),
+        });
+        if (!initRes.ok) { const e = await initRes.json(); throw new Error(e.detail); }
+        const { uploadId } = await initRes.json();
+
+        await new Promise((resolve, reject) => {
+          const fd = new FormData(); fd.append('file', file);
+          const xhr = new XMLHttpRequest();
+          xhr.open('PUT', `${API}/api/uploads/${uploadId}/file`);
+          xhr.upload.addEventListener('progress', e => {
+            if (e.lengthComputable) {
+              setProgress((e.loaded / e.total) * 100);
+              document.getElementById('progressSub').textContent = `${fmt(e.loaded)} / ${fmt(e.total)}`;
+            }
+          });
+          xhr.addEventListener('load', () => xhr.status < 300 ? resolve() : reject(new Error('Upload failed')));
+          xhr.addEventListener('error', () => reject(new Error('Network error')));
+          xhr.send(fd);
+        });
+
+        await fetch(`${API}/api/uploads/${uploadId}/complete`, { method: 'POST' });
+        const detail = await (await fetch(`${API}/api/uploads/${uploadId}`)).json();
+        detail.jobs = [];
+        uploads.unshift(detail);
+        renderFiles();
+        showToast('Upload complete!', 'success');
+      } catch (e) {
+        showToast(e.message || 'Upload failed', 'error');
+      } finally {
+        document.getElementById('progressSection').style.display = 'none';
+        document.getElementById('dropzone').style.display = '';
+      }
+    }
+
+    // ── AI Enhancement ───────────────────────────
+    async function startEnhancement(uploadId) {
+      if (!aiEnabled) { showToast('AI not available. Set REPLICATE_API_TOKEN on server.', 'error'); return; }
+      try {
+        const r = await fetch(`${API}/api/jobs/create`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ uploadId }),
+        });
+        if (!r.ok) { const e = await r.json(); throw new Error(e.detail); }
+        const job = await r.json();
+        // Add job to upload
+        const u = uploads.find(x => x.id === uploadId);
+        if (u) { u.jobs = u.jobs || []; u.jobs.unshift(job); }
+        renderFiles();
+        showToast('AI enhancement started!', 'info');
+        startPollingJob(uploadId, job.id);
+      } catch (e) {
+        showToast(e.message, 'error');
+      }
+    }
+
+    function startPollingJob(uploadId, jobId) {
+      if (pollingJobs.has(jobId)) return;
+      pollingJobs.add(jobId);
+
+      const poll = setInterval(async () => {
+        try {
+          const r = await fetch(`${API}/api/jobs/${jobId}`);
+          const job = await r.json();
+          // Update local state
+          const u = uploads.find(x => x.id === uploadId);
+          if (u && u.jobs) {
+            const idx = u.jobs.findIndex(j => j.id === jobId);
+            if (idx >= 0) u.jobs[idx] = job;
+          }
+          renderFiles();
+          if (job.status === 'completed' || job.status === 'failed') {
+            clearInterval(poll);
+            pollingJobs.delete(jobId);
+            if (job.status === 'completed') showToast('Enhancement complete! 🎉', 'success');
+            if (job.status === 'failed') showToast('Enhancement failed: ' + (job.errorMessage || 'unknown'), 'error');
+          }
+        } catch {
+          clearInterval(poll);
+          pollingJobs.delete(jobId);
+        }
+      }, 3000);
+    }
+
+    // ── Download ─────────────────────────────────
+    function downloadOriginal(uploadId, filename) {
+      const a = document.createElement('a');
+      a.href = `${API}/api/uploads/${uploadId}/download`;
+      a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+    }
+
+    function downloadEnhanced(jobId) {
+      const a = document.createElement('a');
+      a.href = `${API}/api/jobs/${jobId}/download`;
+      a.download = ''; document.body.appendChild(a); a.click(); a.remove();
+    }
+
+    // ── Render ───────────────────────────────────
+    function renderFiles() {
+      const section = document.getElementById('filesSection');
+      const list = document.getElementById('fileList');
+      if (!uploads.length) { section.style.display = 'none'; return; }
+      section.style.display = '';
+      document.getElementById('fileCount').textContent = uploads.length + ' file' + (uploads.length !== 1 ? 's' : '');
+
+      list.innerHTML = uploads.map(u => {
+        const jobs = u.jobs || [];
+        const latestJob = jobs[0];
+        const hasActiveJob = latestJob && (latestJob.status === 'pending' || latestJob.status === 'processing');
+        const hasCompletedJob = latestJob && latestJob.status === 'completed';
+
+        return `
+    <div class="file-card">
+      <div class="file-card-top">
+        <div style="min-width:0;flex:1">
+          <h3>${esc(u.filename)}</h3>
+          <span class="badge ${u.status}"><span class="badge-dot"></span> ${u.status}</span>
+        </div>
+      </div>
+      <div class="meta-grid">
+        <div><div class="meta-label">Size</div><div class="meta-value">${fmt(u.fileSize)}</div></div>
+        <div><div class="meta-label">Format</div><div class="meta-value">${u.mimeType === 'video/quicktime' ? 'MOV' : 'MP4'}</div></div>
+        <div><div class="meta-label">Uploaded</div><div class="meta-value">${new Date(u.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div></div>
+      </div>
+
+      <div class="file-actions">
+        ${u.status === 'uploaded' ? `
+          <button class="btn btn-primary" onclick="downloadOriginal('${u.id}', '${esc(u.filename)}')">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2v9M4 8l4 4 4-4M3 13h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Original
+          </button>
+          <button class="btn btn-enhance" onclick="startEnhancement('${u.id}')" ${hasActiveJob || !aiEnabled ? 'disabled' : ''}>
+            ${hasActiveJob ? '<span class="spinner"></span> Processing…' : '✦ AI Enhance'}
+          </button>
+          ${hasCompletedJob ? `
+            <button class="btn btn-primary" onclick="downloadEnhanced('${latestJob.id}')" style="background:linear-gradient(135deg,var(--green),#059669)">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2v9M4 8l4 4 4-4M3 13h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Enhanced
+            </button>
+          ` : ''}
+        ` : ''}
+      </div>
+
+      ${jobs.length > 0 ? jobs.map(j => renderJobCard(j)).join('') : `
+        <div style="margin-top:16px;padding:10px 14px;border-radius:8px;background:rgba(167,139,250,0.04);border:1px dashed rgba(167,139,250,0.15);display:flex;align-items:center;gap:8px">
+          <span style="font-size:14px">✦</span>
+          <span style="font-size:12px;color:rgba(167,139,250,0.5);font-style:italic">
+            ${aiEnabled ? 'Click "AI Enhance" to upscale this video' : 'Set REPLICATE_API_TOKEN to enable AI'}
+          </span>
+        </div>
+      `}
+    </div>`;
+      }).join('');
+    }
+
+    function renderJobCard(j) {
+      return `
+  <div class="job-card">
+    <div class="job-header">
+      <h4>✦ AI Enhancement</h4>
+      <span class="job-badge ${j.status}">
+        ${j.status === 'processing' ? '<span class="spinner" style="width:10px;height:10px;border-width:1.5px;margin-right:4px"></span>' : ''}
+        ${j.status}
+      </span>
+    </div>
+    ${(j.status === 'pending' || j.status === 'processing') ? `
+      <div class="progress-bar-wrap">
+        <div class="progress-bar" style="width:${j.progress || 5}%"></div>
+      </div>
+      <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim)">
+        ${j.status === 'pending' ? 'Queued — waiting for GPU…' : 'Enhancing your video…'}
+      </div>
+    ` : ''}
+    ${j.status === 'completed' ? `
+      <div style="font-family:var(--font-mono);font-size:12px;color:var(--green)">
+        ✓ Enhancement complete
+        ${j.completedAt ? '· ' + new Date(j.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+      </div>
+    ` : ''}
+    ${j.status === 'failed' ? `<div class="job-error">Error: ${esc(j.errorMessage || 'Unknown error')}</div>` : ''}
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-faint);margin-top:6px">
+      Model: ${esc(j.modelName)}
+    </div>
+  </div>`;
+    }
+
+    // ── Events ───────────────────────────────────
+    const dz = document.getElementById('dropzone');
+    dz.addEventListener('dragenter', e => { e.preventDefault(); dz.classList.add('dragover'); });
+    dz.addEventListener('dragover', e => e.preventDefault());
+    dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+    dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('dragover'); if (e.dataTransfer.files.length) handleUpload(e.dataTransfer.files[0]); });
+    document.getElementById('fileInput').addEventListener('change', e => { if (e.target.files[0]) handleUpload(e.target.files[0]); e.target.value = ''; });
+
+    // ── Init ─────────────────────────────────────
+    (async () => { await checkBackend(); await loadUploads(); })();
+  </script>
+</body>
+
+</html>
